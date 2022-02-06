@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, Response, status, Depends
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Depends
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from .. import models, schemas, utils, oauth2
 from ..database import get_db
@@ -8,11 +8,15 @@ from ..database import get_db
 router = APIRouter()
 
 @router.get("/", response_model=List[schemas.PostResponse])
-def get_posts(db: Session=Depends(get_db), curr_user: int=Depends(oauth2.get_current_user)):
+def get_posts(db: Session=Depends(get_db),
+              curr_user: int=Depends(oauth2.get_current_user),
+              limit: int=10,
+              skip: int=0,
+              search: Optional[str]= ""):
     # posts = cursor.execute(""" SELECT * FROM posts""")
     # posts = cursor.fetchall()
     
-    posts = db.query(models.Post).all()
+    posts = db.query(models.Post).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
     
     return posts
 
@@ -34,8 +38,7 @@ def create_posts(post: schemas.PostCreate, db: Session=Depends(get_db), curr_use
     # post = cursor.fetchone()
     # # saves item to db
     # conn.commit()
-    print(curr_user.email)
-    post = models.Post(**post.dict())
+    post = models.Post(user_id=curr_user.id, **post.dict())
     db.add(post)
     db.commit()
     db.refresh(post)
@@ -44,7 +47,7 @@ def create_posts(post: schemas.PostCreate, db: Session=Depends(get_db), curr_use
 
 
 @router.put("/{id}", response_model=schemas.PostResponse)
-def update_post(id: int, post: schemas.PostCreate, db: Session=Depends(get_db), curr_user: int=Depends(oauth2.get_current_user)):
+def update_post(id: int, updated_post: schemas.PostCreate, db: Session=Depends(get_db), curr_user: int=Depends(oauth2.get_current_user)):
         # cursor.execute(""" UPDATE posts SET title=%s, content=%s, published=%s WHERE id=%s RETURNING * """,
         #                (post.title, post.content, str(post.published), str(id)) )
         # updated_post = cursor.fetchone()
@@ -52,8 +55,12 @@ def update_post(id: int, post: schemas.PostCreate, db: Session=Depends(get_db), 
         
         post_query = db.query(models.Post).filter(models.Post.id == id)
         
-        utils.validate_not_empty(id, post_query.first())
-        post_query.update(post.dict(), synchronize_session=False)
+        post = post_query.first()
+        utils.validate_not_empty(id, post)
+        if post.user_id != curr_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to perform action")
+        
+        post_query.update(updated_post.dict(), synchronize_session=False)
         db.commit()
         
         
@@ -70,7 +77,13 @@ def delete_post(id: int, db: Session=Depends(get_db), curr_user: int=Depends(oau
     
     # post SQL query then executes it within validate post
     post_query = db.query(models.Post).filter(models.Post.id == id)
-    utils.validate_not_empty(id, post_query.first())
+    
+    post = post_query.first()
+    
+    utils.validate_not_empty(id, post)
+    if post.user_id != curr_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to perform action")
+    
     post_query.delete(synchronize_session=False)
     db.commit()
 
