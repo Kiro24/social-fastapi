@@ -6,8 +6,8 @@ from .database import engine
 from .routers import user, post, auth, vote
 
 
-
-models.Base.metadata.create_all(bind=engine)
+# to make sa setup first db
+# models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI() 
 
