@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -8,6 +9,8 @@ from ..database import get_db
 router = APIRouter()
 
 @router.get("/", response_model=List[schemas.PostResponse])
+# @router.get("/", response_model=List[schemas.Post])
+# @router.get("/")
 def get_posts(db: Session=Depends(get_db),
               curr_user: int=Depends(oauth2.get_current_user),
               limit: int=10,
@@ -16,7 +19,8 @@ def get_posts(db: Session=Depends(get_db),
     # posts = cursor.execute(""" SELECT * FROM posts""")
     # posts = cursor.fetchall()
     
-    posts = db.query(models.Post).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
+    
+    posts = db.query( models.Post, func.count(models.Vote.post_id).label("votes") ).join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
     
     return posts
 
@@ -25,12 +29,14 @@ def get_post(id: int, res: Response, db: Session=Depends(get_db), curr_user: int
     # cursor.execute(""" SELECT * FROM posts WHERE id = (%s) """, (str(id),))
     # post = cursor.fetchone()
     
-    post = db.query(models.Post).filter(models.Post.id == id).first()
+    post = db.query( models.Post, func.count(models.Vote.post_id).label("votes") ).join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).filter(models.Post.id == id).first()
+    
+    
     utils.validate_not_empty(id, post)
         
     return post
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.PostResponse)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.PostIntermediate)
 def create_posts(post: schemas.PostCreate, db: Session=Depends(get_db), curr_user: int=Depends(oauth2.get_current_user)):
     # to prevent SQLi
     # cursor.execute(""" INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING * """, 
@@ -46,7 +52,7 @@ def create_posts(post: schemas.PostCreate, db: Session=Depends(get_db), curr_use
     return post
 
 
-@router.put("/{id}", response_model=schemas.PostResponse)
+@router.put("/{id}", response_model=schemas.PostIntermediate)
 def update_post(id: int, updated_post: schemas.PostCreate, db: Session=Depends(get_db), curr_user: int=Depends(oauth2.get_current_user)):
         # cursor.execute(""" UPDATE posts SET title=%s, content=%s, published=%s WHERE id=%s RETURNING * """,
         #                (post.title, post.content, str(post.published), str(id)) )

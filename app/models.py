@@ -16,6 +16,7 @@ class Post(Base):
     
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     
+    # to reference user when querying the post
     user = relationship("User")
     
 class User(Base):

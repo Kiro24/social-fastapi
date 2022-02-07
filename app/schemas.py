@@ -41,14 +41,20 @@ class PostBase(BaseModel):
 class PostCreate(PostBase):
     pass
 
-class PostResponse(PostBase):
+class PostIntermediate(PostBase):
     id: int
     created_at: datetime
     user: UserResponse
     
     class Config:
         orm_mode=True
-        
+
+class PostResponse(BaseModel):
+    Post: PostIntermediate
+    votes: int
+    
+    class Config:
+        orm_mode=True
         
 class Vote(BaseModel):
     post_id: int
