@@ -9,7 +9,7 @@ from app.database import get_db, Base
 
 
 
-SQLALCHEMY_DATABASE_URL = f"postgresql://{settings.db_username}:{settings.db_passwd}@{settings.db_hostname}:{settings.db_port}/fastapi_test"
+SQLALCHEMY_DATABASE_URL = f"postgresql://{settings.db_username}:{settings.db_passwd}@{settings.db_hostname}:{settings.db_port}/{settings.db_name}_test"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
