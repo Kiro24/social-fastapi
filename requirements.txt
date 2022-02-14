@@ -62,7 +62,6 @@ jupyterlab-pygments==0.1.2
 keyutils==0.6
 lazy-object-proxy==1.7.1
 lensfun==0.3.95
-LibAppArmor==3.0.3
 libfdt==1.6.1
 libtorrent===2.0.5-build-libtorrent-rasterbar-src-libtorrent-rasterbar-2.0.5-bindings-python
 libvirt-python==8.0.0
